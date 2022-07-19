@@ -3,10 +3,12 @@ import pygame
 pygame.init()
 
 map_img = pygame.image.load("map.png")
+scale = 2
+cat = pygame.image.load("greencat.png")
 map_chunks = {"house": pygame.Rect((320*2, 192*2), (320, 192))}
 playspace = map_img.subsurface(map_chunks["house"]).copy() #(156, 96)
 #playspace.fill((0,0,0))
-d = pygame.display.set_mode((playspace.get_width()*2, playspace.get_height()*2), pygame.RESIZABLE)
+d = pygame.display.set_mode((playspace.get_width()*scale, playspace.get_height()*scale), pygame.RESIZABLE)
 pygame.display.set_caption("ChatChat // DELUX //")
 sur = pygame.Surface((32,32))
 sur.fill((0,255,0))
@@ -15,7 +17,7 @@ playing = True
 start_x = 0
 tick = 0
 #globalFont = pygame.font.Font("fixedsys.fon", 260)
-globalFont = pygame.font.SysFont("Courier New", 12, bold=True, italic=False)
+globalFont = pygame.font.SysFont("Unispace", 18, bold=False, italic=False)
 
 class MapComponent(pygame.sprite.Sprite):
     def __init__(self, pos):
@@ -38,8 +40,9 @@ class Character(pygame.sprite.Sprite):
     def __init__(self, name : str):
         pygame.sprite.Sprite.__init__(self)
         self.name = name
-        self.image = pygame.Surface((16,16)) #texture
-        self.image.fill((0, 0, 255))
+        self.jumping = False
+        self.image_index = 4
+        self.image = cat.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16))) #texture
 
         self.up = pygame.K_UP
         self.down = pygame.K_DOWN
@@ -65,29 +68,49 @@ class Character(pygame.sprite.Sprite):
         if tick % 3 == 0:
             keys = pygame.key.get_pressed()
             if not self.rect.collidepoint((self.rect.topleft[0], 0)):
-                if keys[self.up]: self.y -= 16
+                if keys[self.up]:
+                    self.y -= 16
+                    if self.image_index == 1: self.image_index = 0
+                    elif self.image_index == 0: self.image_index = 1
+                    else: self.image_index = 0
+                    return
             if not self.rect.collidepoint((self.rect.bottomleft[0], playspace.get_height()-16)):
-                if keys[self.down]: self.y += 16
+                if keys[self.down]:
+                    self.y += 16
+                    if self.image_index == 2: self.image_index = 3
+                    elif self.image_index == 3: self.image_index = 2
+                    else: self.image_index = 2
+                    return
             if not self.rect.collidepoint((start_x, self.rect.topleft[1])):
-                if keys[self.left]: self.x -= 16
+                if keys[self.left]:
+                    self.x -= 16
+                    if self.image_index == 4: self.image_index = 5
+                    elif self.image_index == 5: self.image_index = 4
+                    else: self.image_index = 4
+                    return
             if not self.rect.collidepoint((start_x+playspace.get_width()-4, self.rect.topright[1])):
-                if keys[self.right]: self.x += 16
-        
+                if keys[self.right]:
+                    self.x += 16
+                    if self.image_index == 6: self.image_index = 7
+                    elif self.image_index == 7: self.image_index = 6
+                    else: self.image_index = 6
+                    return
+            if self.image_index % 2 > 0: self.image_index -= 1
 
     def show(self):
+        self.image = cat.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16)))
         self.rect = playspace.blit(self.image, (self.x + start_x, self.y))
         self.nameX = self.rect.centerx - (len(self.name) *3.5)
-        playspace.blit(globalFont.render(self.name, True, (255,255,255)), (self.nameX, self.y-12))
+        playspace.blit(globalFont.render(self.name, True, (255,255,255)), (self.nameX, (self.y-12)))
     
 class Dog(Character):
     def __init__(self,name : str):
         Character.__init__(self, name)
-        self.image.fill((100, 0, 0))
         
 class Cat(Character):
     def __init__(self,name : str):
         Character.__init__(self, name)
-        self.image.fill((0, 255, 0))
+        #self.image.fill((0, 255, 0))
 
         self.up = pygame.K_UP
         self.down = pygame.K_DOWN
@@ -160,8 +183,9 @@ class Input(Component):
 
 me = Cat("Csacsi")
 #notme = Dog("Someone else")
+#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
 
-chat_input = Input("Itt lesz majd a chat", (playspace.get_width()*2, playspace.get_height()*2), (1000,50), (255,255,255))
+chat_input = Input("Itt lesz majd a chat", (playspace.get_width()*scale, playspace.get_height()*scale), (1000,50), (255,255,255))
 
 while playing:
     #playspace.fill((0,0,0))
@@ -171,7 +195,6 @@ while playing:
         #    size = pygame.display.get_surface().get_size()
         #    start_x = int(size[0]/2-360)
     me.onUpdate()
-    #fov = playspace.subsurface(pygame.Rect((max(me.x-80, 0), max(me.y-48, 0)), (160, 96)))
     posx = min(max(me.rect.centerx-80, 8), 152)
     posy = min(max(me.rect.centery-48, 8), 88)
     fov_rect = pygame.Rect((posx, posy), (160, 96))
@@ -182,7 +205,7 @@ while playing:
     tick +=1
     pygame.display.update()
     pygame.time.Clock().tick(60)
-    resized_playspace = pygame.transform.scale(fov, (320*2, 192*2))
+    resized_playspace = pygame.transform.scale(fov, (320*scale, 192*scale))
     d.fill((0,0,100))
     d.blit(resized_playspace, (start_x,0))
     #d.blit(playspace, (start_x,0))
