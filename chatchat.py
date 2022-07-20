@@ -1,23 +1,25 @@
 import pygame
+import pyscreeze
 
 pygame.init()
 
 map_img = pygame.image.load("map.png")
+#pyscreeze.locateAll()
 scale = 2
 cat = pygame.image.load("greencat.png")
+icon = pygame.image.load("logo.png")
+#icon = pygame.transform.scale(cat.subsurface(pygame.Rect((16*4, 0+2), (8, 8))), (35, 35))
 map_chunks = {"house": pygame.Rect((320*2, 192*2), (320, 192))}
 playspace = map_img.subsurface(map_chunks["house"]).copy() #(156, 96)
 #playspace.fill((0,0,0))
 d = pygame.display.set_mode((playspace.get_width()*scale, playspace.get_height()*scale), pygame.RESIZABLE)
 pygame.display.set_caption("ChatChat // DELUX //")
-sur = pygame.Surface((32,32))
-sur.fill((0,255,0))
-pygame.display.set_icon(sur)
+pygame.display.set_icon(icon)
 playing = True
 start_x = 0
 tick = 0
 #globalFont = pygame.font.Font("fixedsys.fon", 260)
-globalFont = pygame.font.SysFont("Unispace", 18, bold=False, italic=False)
+globalFont = pygame.font.SysFont("flixel", 24, bold=True, italic=False)
 
 class MapComponent(pygame.sprite.Sprite):
     def __init__(self, pos):
@@ -100,8 +102,15 @@ class Character(pygame.sprite.Sprite):
     def show(self):
         self.image = cat.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16)))
         self.rect = playspace.blit(self.image, (self.x + start_x, self.y))
-        self.nameX = self.rect.centerx - (len(self.name) *3.5)
-        playspace.blit(globalFont.render(self.name, True, (255,255,255)), (self.nameX, (self.y-12)))
+
+    def show_name(self):
+        posx = min(max(me.rect.centerx-80, 8), 152)
+        posy = min(max(me.rect.centery-48, 8), 88)
+        fr = pygame.Rect((posx, posy), (160, 96))
+        print(fr.centerx)
+        self.nameX = me.rect.centerx-fr.topleft[0] - (len(self.name) * 1.2)
+        self.nameY = me.rect.centery-fr.topleft[1]+10
+        resized_playspace.blit(globalFont.render(self.name, True, (255,255,255)), (self.nameX*4, (self.nameY*4)))
     
 class Dog(Character):
     def __init__(self,name : str):
@@ -191,14 +200,10 @@ while playing:
     #playspace.fill((0,0,0))
     playspace = map_img.subsurface(map_chunks["house"]).copy()
     for event in pygame.event.get(eventtype=pygame.QUIT): playing = False
-        #if event.type == pygame.VIDEORESIZE:
-        #    size = pygame.display.get_surface().get_size()
-        #    start_x = int(size[0]/2-360)
     me.onUpdate()
     posx = min(max(me.rect.centerx-80, 8), 152)
     posy = min(max(me.rect.centery-48, 8), 88)
     fov_rect = pygame.Rect((posx, posy), (160, 96))
-    print(fov_rect)
     fov = playspace.subsurface(fov_rect)
     #notme.onUpdate()
     chat_input.onUpdate()
@@ -206,6 +211,8 @@ while playing:
     pygame.display.update()
     pygame.time.Clock().tick(60)
     resized_playspace = pygame.transform.scale(fov, (320*scale, 192*scale))
+    me.show_name()
+    
     d.fill((0,0,100))
     d.blit(resized_playspace, (start_x,0))
     #d.blit(playspace, (start_x,0))
