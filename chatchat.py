@@ -1,37 +1,29 @@
 import pygame
 
-pygame.init()
+hitmap_img = pygame.image.load("hitmap.png")
+hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))))
 
 map_img = pygame.image.load("map.png")
-hitmap_img = pygame.image.load("hitmap.png")
-"""
-walls = [[(21, 28), 0], [(0, 28), 1], [(0, 28), 2], [(0, 28), 3]]
+cat_img = pygame.image.load("greencat.png")
+dog_img = pygame.image.load("greendog.png")
 
-Image.frombuffer("RGBX", (16,16),map_img.subsurface(pygame.Rect((1825, 1), (16, 16))).get_buffer().raw).show()
-
-for row in walls:
-    for cube in range(row[0][0], row[0][1]):
-        cube = cube*16
-        map_img.subsurface(pygame.Rect((1602+cube, 2+row[1]*16), (16, 16)))
-        #pyscreeze.locateAll()
-"""
-
-scale = 2
-cat = pygame.image.load("greencat.png")
-icon = pygame.image.load("logo.png")
-#icon = pygame.transform.scale(cat.subsurface(pygame.Rect((16*4, 0+2), (8, 8))), (35, 35))
-playspace = map_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))).copy() #(156, 96)
-
-hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))))
-#playspace.fill((0,0,0))
-d = pygame.display.set_mode((playspace.get_width()*scale, playspace.get_height()*scale), pygame.RESIZABLE)
-pygame.display.set_caption("ChatChat // DELUX //")
-pygame.display.set_icon(icon)
-playing = True
-start_x = 0
+playspace = map_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))).copy()
 tick = 0
-#globalFont = pygame.font.Font("fixedsys.fon", 260)
-globalFont = pygame.font.SysFont("flixel", 24, bold=True, italic=False)
+scale = 2
+window = None
+globalFont = None
+resized_playspace = None
+false_keys = None
+
+def init(window_default_size : tuple = None, isClient : bool = True):
+    global window, globalFont, client, false_keys
+    client = isClient
+    pygame.init()
+    false_keys = pygame.key.get_pressed()
+    if client:
+        if window_default_size == None: window = pygame.display.set_mode((playspace.get_width()*scale, playspace.get_height()*scale), pygame.RESIZABLE)
+        else: window = pygame.display.set_mode((window_default_size*scale, window_default_size*scale), pygame.RESIZABLE)
+        globalFont = pygame.font.SysFont("flixel", 24, bold=True, italic=False)
 
 class MapComponent(pygame.sprite.Sprite):
     def __init__(self, pos):
@@ -44,33 +36,34 @@ class MapComponent(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def show(self):
-        self.rect = playspace.blit(self.image, (self.x + start_x, self.y))
-
-class Wall(MapComponent):
-    def __init__(self, pos):
-        MapComponent.__init__(self, pos)
+        self.rect = playspace.blit(self.image, (self.x, self.y))
 
 class Character(pygame.sprite.Sprite):
-    def __init__(self, name : str):
+    def __init__(self, name : str, id : int = 0):
         pygame.sprite.Sprite.__init__(self)
+        self.id = id
         self.name = name
-        self.jumping = False
+        self.sheet = cat_img
+        self.sheet_id = 0
         self.image_index = 4
-        self.image = cat.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16))) #texture
+        self.image = self.sheet.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16))) #texture
 
         self.up = pygame.K_UP
         self.down = pygame.K_DOWN
         self.left = pygame.K_LEFT
         self.right = pygame.K_RIGHT
+        self.key = -1              #only used when it's on server
 
         self.rect = self.image.get_rect()
+        fov_rect = pygame.Rect((min(max(self.rect.centerx-80, 8), 152), min(max(self.rect.centery-48, 8), 88)), (160, 96))
+        self.fov = playspace.subsurface(fov_rect)
 
         self.chunk_y = 2
         self.chunk_x = 2
         self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
         self.x = 160
-        self.nameX = self.rect.centerx - (len(self.name) * 5)
         self.y = 128
+        self.playspace = map_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))).copy()
 
     def onUpdate(self):
         self.move()
@@ -80,9 +73,9 @@ class Character(pygame.sprite.Sprite):
         pass
 
     def move(self):
-        if tick % 3 == 0:
-            keys = pygame.key.get_pressed()
-            if keys[self.up]:
+        if tick % 6 == 0:
+            if self.key == 0:
+                self.key = -1
                 if not self.rect.collidepoint((self.rect.topleft[0], 0)) and not (self.hitmap_array[self.rect.centerx][self.rect.centery - 16] == 65280):
                     self.y -= 16
                     if self.image_index == 1: self.image_index = 0
@@ -92,71 +85,82 @@ class Character(pygame.sprite.Sprite):
                 elif self.rect.collidepoint((self.rect.topleft[0], 0)):
                     self.chunk_y -= 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
-                    self.y = playspace.get_height()-16
+                    self.y = self.playspace.get_height()-16
                     return
-            if keys[self.down]:
-                if not self.rect.collidepoint((self.rect.bottomleft[0], playspace.get_height()-16)) and not (self.hitmap_array[self.rect.centerx][self.rect.centery + 16] == 65280):
+            elif self.key == 1:
+                self.key = -1
+                if not self.rect.collidepoint((self.rect.bottomleft[0], self.playspace.get_height()-16)) and not (self.hitmap_array[self.rect.centerx][self.rect.centery + 16] == 65280):
                     self.y += 16
                     if self.image_index == 2: self.image_index = 3
                     elif self.image_index == 3: self.image_index = 2
                     else: self.image_index = 2
                     return
-                elif self.rect.collidepoint((self.rect.bottomleft[0], playspace.get_height()-16)):
+                elif self.rect.collidepoint((self.rect.bottomleft[0], self.playspace.get_height()-16)):
                     self.chunk_y += 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
                     self.y = 0
                     return
-            if keys[self.left]:
-                if not self.rect.collidepoint((start_x, self.rect.topleft[1])) and not (self.hitmap_array[self.rect.centerx - 16][self.rect.centery] == 65280):
+            elif self.key == 2:
+                self.key = -1
+                if not self.rect.collidepoint((0, self.rect.topleft[1])) and not (self.hitmap_array[self.rect.centerx - 16][self.rect.centery] == 65280):
                     self.x -= 16
                     if self.image_index == 4: self.image_index = 5
                     elif self.image_index == 5: self.image_index = 4
                     else: self.image_index = 4
                     return
-                elif self.rect.collidepoint((start_x, self.rect.topleft[1])):
+                elif self.rect.collidepoint((0, self.rect.topleft[1])):
                     self.chunk_x -= 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
-                    self.x = start_x+playspace.get_width()-16
+                    self.x = self.playspace.get_width()-16
                     return
-            if keys[self.right]:
-                if not self.rect.collidepoint((start_x+playspace.get_width()-4, self.rect.topright[1])) and not (self.hitmap_array[self.rect.centerx + 16][self.rect.centery] == 65280):
+            elif self.key == 3:
+                self.key = -1
+                if not self.rect.collidepoint((self.playspace.get_width()-4, self.rect.topright[1])) and not (self.hitmap_array[self.rect.centerx + 16][self.rect.centery] == 65280):
                     self.x += 16
                     if self.image_index == 6: self.image_index = 7
                     elif self.image_index == 7: self.image_index = 6
                     else: self.image_index = 6
                     return
-                elif self.rect.collidepoint((start_x+playspace.get_width()-4, self.rect.topright[1])):
+                elif self.rect.collidepoint((0+self.playspace.get_width()-4, self.rect.topright[1])):
                     self.chunk_x += 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
-                    self.x = start_x
+                    self.x = 0
                     return
             if self.image_index % 2 > 0: self.image_index -= 1
 
     def show(self):
-        self.image = cat.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16)))
-        self.rect = playspace.blit(self.image, (self.x + start_x, self.y))
+        self.image = self.sheet.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16)))
+        self.rect = self.playspace.blit(self.image, (self.x, self.y))
 
-    def show_name(self):
+class ClientCharacter(Character):
+    def __init__(self, name : str, id : int = 0):
+        Character.__init__(self, name)
+        self.resized_playspace = pygame.transform.scale(self.fov, (320*scale, 192*scale))
+        self.fov_rect = pygame.Rect(0, 0, 0, 0)
+        
+    def onUpdate(self):
+        self.show()
         posx = min(max(self.rect.centerx-80, 8), 152)
         posy = min(max(self.rect.centery-48, 8), 88)
-        fr = pygame.Rect((posx, posy), (160, 96))
-        self.nameX = self.rect.centerx-fr.topleft[0] - (len(self.name) * 1.2)
-        self.nameY = self.rect.centery-fr.topleft[1]+10
-        resized_playspace.blit(globalFont.render(self.name, True, (255,255,255)), (self.nameX*4, (self.nameY*4)))
-    
-class Dog(Character):
-    def __init__(self,name : str):
-        Character.__init__(self, name)
-        
-class Cat(Character):
-    def __init__(self,name : str):
-        Character.__init__(self, name)
-        #self.image.fill((0, 255, 0))
+        self.fov_rect = pygame.Rect((posx, posy), (160, 96))
+        self.fov = self.playspace.subsurface(self.fov_rect)
+        self.nameX = self.rect.centerx-posx - (len(self.name) * 1.2)
+        self.nameY = self.rect.centery-posy+10
+        self.resized_playspace = pygame.transform.scale(self.fov, (320*scale, 192*scale))
+        self.show_name(self.resized_playspace, (self.nameX, self.nameY))
 
-        self.up = pygame.K_UP
-        self.down = pygame.K_DOWN
-        self.left = pygame.K_LEFT
-        self.right = pygame.K_RIGHT
+    def show_name(self, surface : pygame.Surface, at : tuple):
+        surface.blit(globalFont.render(self.name, True, (255,255,255)), (at[0]*(scale*2), (at[1]*(scale*2))))
+    
+class Dog(ClientCharacter):
+    def __init__(self,name : str, id : int = 0):
+        Character.__init__(self, name, id)
+        self.sheet = dog_img
+        
+class Cat(ClientCharacter):
+    def __init__(self,name : str, id : int = 0):
+        Character.__init__(self, name, id)
+        
 
 class Component(pygame.sprite.Sprite):
     def __init__(self, text : str, pos, size, color, fixed=True):
@@ -176,7 +180,7 @@ class Component(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def onUpdate(self):
-        self.show()
+        if client: self.show()
         m = pygame.mouse.get_pos()
         size = self.image.get_size()
         if m[0] <= self.x+size[0] and m[0] >= self.x and m[1] <= self.y + size[1] and m[1] >= self.y:
@@ -196,9 +200,9 @@ class Component(pygame.sprite.Sprite):
         pass
 
     def show(self):
-        if self.hovering: self.rect = d.blit(self.hoverSurf, (self.x, self.y))
-        else: self.rect = d.blit(self.image, (self.x, self.y))
-        d.blit(globalFont.render(self.text, True, (0,0,0)), (self.x, self.y))
+        if self.hovering: self.rect = window.blit(self.hoverSurf, (self.x, self.y))
+        else: self.rect = window.blit(self.image, (self.x, self.y))
+        window.blit(globalFont.render(self.text, True, (0,0,0)), (self.x, self.y))
 
 class Input(Component):
 
@@ -222,30 +226,22 @@ class Input(Component):
     def onTypeing(self, key):
         if self.typeing: self.text += key
 
-me = Cat("Csacsi")
-#notme = Dog("Someone else")
+def onUpdate(update_list : list):
+    global playspace, tick
+    for event in pygame.event.get(eventtype=pygame.QUIT): return True
+        
+    for component in update_list:
+        if isinstance(component,Character) and not client:
+            component.onUpdate()
+        elif isinstance(component,Component) and client: component.onUpdate()
 
-chat_input = Input("Itt lesz majd a chat", (playspace.get_width()*scale, playspace.get_height()*scale), (1000,50), (255,255,255))
-
-while playing:
-    #playspace.fill((0,0,0))
-    playspace = map_img.subsurface(pygame.Rect((320*me.chunk_x, 192*me.chunk_y), (320, 192))).copy()
-    for event in pygame.event.get(eventtype=pygame.QUIT): playing = False
-    me.onUpdate()
-    posx = min(max(me.rect.centerx-80, 8), 152)
-    posy = min(max(me.rect.centery-48, 8), 88)
-    fov_rect = pygame.Rect((posx, posy), (160, 96))
-    fov = playspace.subsurface(fov_rect)
-    #notme.onUpdate()
-    chat_input.onUpdate()
-    tick +=1
-    pygame.display.update()
+    if client: pygame.display.update()
     pygame.time.Clock().tick(60)
-    resized_playspace = pygame.transform.scale(fov, (320*scale, 192*scale))
-    me.show_name()
-    
-    d.fill((0,0,100))
-    d.blit(resized_playspace, (start_x,0))
-    #d.blit(playspace, (start_x,0))
+    tick +=1
+    if client: window.fill((0,0,100))
+    return False
 
-print("Bye!")
+def id_to_sheet(id : int):
+    if id == 0: return cat_img
+    elif id == 1: return dog_img
+    return
