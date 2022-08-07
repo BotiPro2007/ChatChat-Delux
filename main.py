@@ -3,12 +3,13 @@ import pygame, chatchat, pickle, socket, threading
 chatchat.init()
 
 icon = pygame.image.load("logo.png")
-name = "Szörme"
+name = "Boti"
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(("127.0.0.1", 11102))
+s.connect(("localhost", 11102))
 s.send(pickle.dumps({"name":name}))
 pygame.display.set_caption("ChatChat // DELUX //")
 pygame.display.set_icon(icon)
+
 playing = True
 
 me = chatchat.ClientCharacter(name)
@@ -46,7 +47,7 @@ def receive():
         for other in others:
             name_pos = (other.rect.centerx-(me.rect.centerx-80) - (len(other.name) * 1.2)+(me.rect.centerx - me.fov_rect.centerx), other.rect.centery-(me.rect.centery-48)+10+((me.rect.centery - me.fov_rect.centery)))
             other.show_name(me.resized_playspace, name_pos)
-                
+
 threading.Thread(target=receive).start()
 
 try:

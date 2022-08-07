@@ -63,6 +63,7 @@ class Character(pygame.sprite.Sprite):
         self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
         self.x = 160
         self.y = 128
+        self.last_step_tick = 6
         self.playspace = map_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))).copy()
 
     def onUpdate(self):
@@ -73,60 +74,54 @@ class Character(pygame.sprite.Sprite):
         pass
 
     def move(self):
-        if tick % 6 == 0:
+        if tick - self.last_step_tick >= 6:
             if self.key == 0:
-                self.key = -1
                 if not self.rect.collidepoint((self.rect.topleft[0], 0)) and not (self.hitmap_array[self.rect.centerx][self.rect.centery - 16] == 65280):
                     self.y -= 16
                     if self.image_index == 1: self.image_index = 0
                     elif self.image_index == 0: self.image_index = 1
                     else: self.image_index = 0
-                    return
                 elif self.rect.collidepoint((self.rect.topleft[0], 0)):
                     self.chunk_y -= 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
                     self.y = self.playspace.get_height()-16
-                    return
             elif self.key == 1:
-                self.key = -1
                 if not self.rect.collidepoint((self.rect.bottomleft[0], self.playspace.get_height()-16)) and not (self.hitmap_array[self.rect.centerx][self.rect.centery + 16] == 65280):
                     self.y += 16
                     if self.image_index == 2: self.image_index = 3
                     elif self.image_index == 3: self.image_index = 2
                     else: self.image_index = 2
-                    return
                 elif self.rect.collidepoint((self.rect.bottomleft[0], self.playspace.get_height()-16)):
                     self.chunk_y += 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
                     self.y = 0
-                    return
             elif self.key == 2:
-                self.key = -1
                 if not self.rect.collidepoint((0, self.rect.topleft[1])) and not (self.hitmap_array[self.rect.centerx - 16][self.rect.centery] == 65280):
                     self.x -= 16
                     if self.image_index == 4: self.image_index = 5
                     elif self.image_index == 5: self.image_index = 4
                     else: self.image_index = 4
-                    return
                 elif self.rect.collidepoint((0, self.rect.topleft[1])):
                     self.chunk_x -= 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
                     self.x = self.playspace.get_width()-16
-                    return
             elif self.key == 3:
-                self.key = -1
                 if not self.rect.collidepoint((self.playspace.get_width()-4, self.rect.topright[1])) and not (self.hitmap_array[self.rect.centerx + 16][self.rect.centery] == 65280):
                     self.x += 16
                     if self.image_index == 6: self.image_index = 7
                     elif self.image_index == 7: self.image_index = 6
                     else: self.image_index = 6
-                    return
                 elif self.rect.collidepoint((0+self.playspace.get_width()-4, self.rect.topright[1])):
                     self.chunk_x += 1
                     self.hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*self.chunk_x, 192*self.chunk_y), (320, 192))))
                     self.x = 0
-                    return
-            if self.image_index % 2 > 0: self.image_index -= 1
+            else:
+                self.key = -1
+                return
+
+            #finaly:
+            self.key = -1
+            self.last_step_tick = tick
 
     def show(self):
         self.image = self.sheet.subsurface(pygame.Rect((16*self.image_index, 0), (16, 16)))
@@ -231,9 +226,7 @@ def onUpdate(update_list : list):
     for event in pygame.event.get(eventtype=pygame.QUIT): return True
         
     for component in update_list:
-        if isinstance(component,Character) and not client:
-            component.onUpdate()
-        elif isinstance(component,Component) and client: component.onUpdate()
+        if isinstance(component,Component) and client: component.onUpdate()
 
     if client: pygame.display.update()
     pygame.time.Clock().tick(60)

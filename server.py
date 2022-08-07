@@ -18,8 +18,10 @@ def receive(client, player : chatchat.Character):
                 print(f"{data['name']} joined to the party!")
                 client.send(pickle.dumps({"sheet":player.sheet_id}))
             if data.get("key") != None: player.key = int(data["key"])
+            player.onUpdate()
+            player.key = -1
             players.update({client: player})
-    except (ConnectionResetError, EOFError, ConnectionAbortedError):
+    except (ConnectionResetError, EOFError, ConnectionAbortedError, BrokenPipeError):
         print(player.name + " left the server!")
         players.pop(client)
         client.close()
@@ -39,7 +41,7 @@ def accepting():
 threading.Thread(target=accepting).start()
 try:
     while True:
-        chatchat.onUpdate(list(players.values()))
+        chatchat.onUpdate([])
         if chatchat.tick % 3 == 0:
             for c in players.keys():
                 player = players[c]
@@ -50,9 +52,18 @@ try:
                         if other.key != -1: have_to_send = True
                 playerdata = {"me":{"x": player.x, "y": player.y, "image_index": player.image_index}, "others":others, "chunk_x":player.chunk_x, "chunk_y":player.chunk_y}
                 c.send(pickle.dumps(playerdata))
-
-except (ConnectionResetError, EOFError,ConnectionAbortedError): pass
+        for c in players.keys():
+            player = players[c]
+            if player.key == -1 and player.image_index % 2 > 0 and chatchat.tick - player.last_step_tick > 6:
+                player.image_index -= 1
+                players.update({c:player})
     
+except (ConnectionResetError, EOFError,ConnectionAbortedError, BrokenPipeError) as e:
+    print(e)
+    c.close()
+
+except (RuntimeError): pass
+
 except (KeyboardInterrupt):
     print("Goodbye Server!")
     for client in players.keys(): client.close()
