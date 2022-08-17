@@ -3,9 +3,9 @@ import pygame, chatchat, pickle, socket, threading, sys
 chatchat.init()
 
 icon = pygame.image.load("logo.png")
-name = "Boti"
+name = "asdasdasd"
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(("localhost", 11102))
+s.connect(("videohun.hu", 11102))
 s.send(pickle.dumps({"name":name}))
 pygame.display.set_caption("ChatChat // DELUX //")
 pygame.display.set_icon(icon)

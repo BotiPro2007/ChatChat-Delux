@@ -5,17 +5,17 @@ hitmap_img = pygame.image.load("hitmap.png")
 hitmap_array = pygame.surfarray.array2d(hitmap_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))))
 
 map_img = pygame.image.load("map.png")
-sheets = [pygame.image.load("greencatwalk.png"),#1
-          pygame.image.load("bluecatwalk.png"),#2
-          pygame.image.load("browncatwalk.png"),#3
-          pygame.image.load("cyancatwalk.png"),#4
-          pygame.image.load("greycatwalk.png"),#5
-          pygame.image.load("orangecatwalk.png"),#6
-          pygame.image.load("pinkcatwalk.png"),#7
-          pygame.image.load("redcatwalk.png"),#8
-          pygame.image.load("whitecatwalk.png"),#9
-          pygame.image.load("yellowcatwalk.png"),#10
-          pygame.image.load("greendogwalk.png")#11
+sheets = [pygame.image.load("greencatwalk.png"),#0
+          pygame.image.load("bluecatwalk.png"),#1
+          pygame.image.load("browncatwalk.png"),#2
+          pygame.image.load("cyancatwalk.png"),#3
+          pygame.image.load("greycatwalk.png"),#4
+          pygame.image.load("orangecatwalk.png"),#5
+          pygame.image.load("pinkcatwalk.png"),#6
+          pygame.image.load("redcatwalk.png"),#7
+          pygame.image.load("whitecatwalk.png"),#8
+          pygame.image.load("yellowcatwalk.png"),#9
+          pygame.image.load("greendogwalk.png")#10
           ]
 
 playspace = map_img.subsurface(pygame.Rect((320*2, 192*2), (320, 192))).copy()
@@ -157,7 +157,7 @@ class ClientCharacter(Character):
         self.show_name(self.resized_playspace, (self.nameX, self.nameY))
 
     def show_name(self, surface : pygame.Surface, at : tuple):
-        surface.blit(name_font.render(self.name, False, (255,255,255)), (at[0]*(scale*2), (at[1]*(scale*2))))
+        surface.blit(name_font.render(self.name, True, (255,255,255)), (at[0]*(scale*2), (at[1]*(scale*2))))
 
 class Component(pygame.sprite.Sprite):
     def __init__(self, text : str, pos, size, color, hovering : bool =True, outline : tuple = (127, 127,127)):
@@ -271,16 +271,15 @@ def onUpdate(update_list : list):
 
 def color_by_sheet_id(id : int):
     color = (0,0,0)
-    if id == 0: color = (143, 180, 42)
-    elif id == 1: color = (54, 139, 230)
-    elif id == 2: color = (137, 91, 33)
-    elif id == 3: color = (165, 206, 230)
-    elif id == 4: color = (135, 135, 135)
-    elif id == 5: color = (215, 210, 53)
-    elif id == 6: color = (137, 91, 33)
-    elif id == 7: color = (198, 98, 118)
-    elif id == 8: color = (159, 38, 52)
-    elif id == 9: color = (255, 255, 255)
-    elif id == 10: color = (241, 205, 101)
+    if id == 0: color = (0, 180, 0) #green
+    elif id == 1: color = (0, 0, 230) #blue
+    elif id == 2: color = (180, 90, 0) #brown
+    elif id == 3: color = (0, 134, 179) #cyan
+    elif id == 4: color = (135, 135, 135) #grey
+    elif id == 5: color = (255, 128, 0) #orange
+    elif id == 6: color = (255, 102, 179) #pink
+    elif id == 7: color = (230, 0, 0) #red
+    elif id == 8: color = (200, 200, 200) #white
+    elif id == 9: color = (127, 127, 0) #yellow
     
     return color

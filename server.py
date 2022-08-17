@@ -1,4 +1,4 @@
-import socket, threading, pickle, pygame, random,chatchat
+import socket, threading, pickle, pygame, random, chatchat
 
 chatchat.init(isClient = False)
 
@@ -17,7 +17,7 @@ leave_message = [-1, "Left the server!"]
 def get_message(message, sheet_id):
     if type(message) == str and message.strip() != "":
         return [player.sheet_id, message.strip()]
-    elif type(data["message"]) == tuple and type(data["message"][0]) == str:
+    elif type(message) == tuple and type(message[0]) == str:
         return list(message).insert(0, player.sheet_id)
     else: return None
 
@@ -91,5 +91,6 @@ while True:
     except (RuntimeError): pass
 
     except (KeyboardInterrupt):
-    	print("Goodbye Server!")
-    	for client in players.keys(): client.close()
+        print("Goodbye Server!")
+        s.close()
+        break
